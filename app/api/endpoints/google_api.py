@@ -22,10 +22,20 @@ async def get_report(
 
 ):
     """Только для суперюзеров. Создает отчет в googlesheets"""
-    projects_full = await charity_projects_crud.get_projects_by_completion_rate(session)
-    spreadsheetId = await spreadsheets_create(wrapper_services)
-    await set_user_permissions(spreadsheetId, wrapper_services)
-    await spreadsheets_update_value(spreadsheetId,
-                                    projects_full,
+    projects_by_completion_rate = await charity_projects_crud.get_projects_by_completion_rate(session)
+    projects_for_spreadsheet = []
+    for model in projects_by_completion_rate:
+        duration = model.close_date - model.create_date
+        projects_for_spreadsheet.append(
+            {
+                "name": model.name,
+                "duration": str(duration),
+                "description": model.description
+            }
+        )
+    spreadsheet_id = await spreadsheets_create(wrapper_services)
+    await set_user_permissions(spreadsheet_id, wrapper_services)
+    await spreadsheets_update_value(spreadsheet_id,
+                                    projects_for_spreadsheet,
                                     wrapper_services)
-    return projects_full
+    return projects_for_spreadsheet

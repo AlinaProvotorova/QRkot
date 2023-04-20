@@ -3,12 +3,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.charity_project import charity_projects_crud
 from app.models import CharityProject
+from app.core.config import settings
 
 detail_close_project = "Закрытый проект нельзя редактировать!"
 detail_delete_project = "В проект были внесены средства, не подлежит удалению!"
 detail_name_duplicate = 'Проект с таким именем уже существует!'
 detail_project_exists = "Проект не найден!"
 detail_sum_project = "Нельзя установить требуемую сумму меньше уже вложенной"
+detail_size_for_sheet = "Данные таблицы превышают размер таблицы, нужно увеличить"
 
 
 async def check_name_duplicate(
@@ -60,4 +62,12 @@ def check_delete_project(charity_project):
         raise HTTPException(
             status_code=400,
             detail=detail_delete_project
+        )
+
+
+def check_size_for_sheet(row_count, column_count):
+    if row_count > settings.ROW_COUNT or column_count > settings.COLUMN_COUNT:
+        raise HTTPException(
+            status_code=422,
+            detail=detail_size_for_sheet
         )

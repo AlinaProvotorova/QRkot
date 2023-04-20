@@ -21,6 +21,31 @@ class Settings(BaseSettings):
     client_x509_cert_url: Optional[str] = None
     email: Optional[str] = None
 
+    FORMAT = "%Y/%m/%d %H:%M:%S"
+    ROW_COUNT = 100
+    COLUMN_COUNT = 10
+    RANGE = f'R1C1:R{ROW_COUNT}C{COLUMN_COUNT}'
+    SPREADSHEET_BODY = dict(
+        properties=dict(
+            title='Отчет от {}',
+            locale='ru_RU',
+        ),
+        sheets=[dict(properties=dict(
+            sheetType='GRID',
+            sheetId=0,
+            title='Лист1',
+            gridProperties=dict(
+                rowCount=ROW_COUNT,
+                columnCount=COLUMN_COUNT,
+            )
+        ))]
+    )
+    TABLE_HEADER = [
+        ['Отчет от', '{}'],
+        ['Топ проектов по скорости закрытия'],
+        ['Название проекта', 'Время сбора', 'Описание']
+    ]
+
     class Config:
         env_file = '.env'
 
