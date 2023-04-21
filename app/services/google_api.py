@@ -1,18 +1,70 @@
+import copy
 from datetime import datetime
 
 from aiogoogle import Aiogoogle
+
 from app.core.config import settings
-from app.api.validators import check_size_for_sheet
+
+FORMAT = "%Y/%m/%d %H:%M:%S"
+NOW_DATE_TIME = datetime.now().strftime(FORMAT)
+TABLE_HEADER = [
+    ['Отчет от', '{}'],
+    ['Топ проектов по скорости закрытия'],
+    ['Название проекта', 'Время сбора', 'Описание']
+]
+SPREADSHEET_BODY = dict(
+    properties=dict(
+        title='Отчет от {}',
+        locale='ru_RU',
+    ),
+    sheets=[dict(
+        properties=dict(
+            sheetType='GRID',
+            sheetId=0,
+            title='Лист1',
+            gridProperties=dict(
+                rowCount=1,  # устанавливаются при создании таблицы
+                columnCount=1,  # устанавливаются при создании таблицы
+            )
+        ))]
+)
+
+
+def create_table(charity_projects_full: list):
+    projects_for_response = []
+    for model in charity_projects_full:
+        projects_for_response.append(
+            {
+                "name": model.name,
+                "duration": str(model.close_date - model.create_date),
+                "description": model.description
+            }
+        )
+    table_header = copy.deepcopy(TABLE_HEADER)
+    table_header[0][1] = table_header[0][1].format(NOW_DATE_TIME)
+    table_values = [
+        *table_header,
+        *[[project['name'], project['duration'], project['description']]
+          for project in projects_for_response],
+    ]
+
+    return table_values, projects_for_response
 
 
 async def spreadsheets_create(
-        wrapper_services: Aiogoogle
-
+        wrapper_services: Aiogoogle,
+        table_values: list[dict[str, str]]
 ) -> str:
-    now_date_time = datetime.now().strftime(settings.FORMAT)
     service = await wrapper_services.discover('sheets', 'v4')
-    spreadsheet_body = settings.SPREADSHEET_BODY.copy()
-    spreadsheet_body['properties']['title'] = spreadsheet_body['properties']['title'].format(now_date_time)
+    spreadsheet_body = copy.deepcopy(SPREADSHEET_BODY)
+    spreadsheet_body['properties']['title'] = (
+        spreadsheet_body['properties']['title'].format(NOW_DATE_TIME))
+    spreadsheet_body.get('sheets')[0]['properties'].get(
+        'gridProperties'
+    )['rowCount'] = len(table_values)
+    spreadsheet_body.get('sheets')[0]['properties'].get(
+        'gridProperties'
+    )['columnCount'] = len((max(table_values, key=len)))
     response = await wrapper_services.as_service_account(
         service.spreadsheets.create(json=spreadsheet_body)
     )
@@ -21,7 +73,7 @@ async def spreadsheets_create(
 
 
 async def set_user_permissions(
-        spreadsheetid: str,
+        spreadsheet_id: str,
         wrapper_services: Aiogoogle
 ) -> None:
     permissions_body = {'type': 'user',
@@ -30,7 +82,7 @@ async def set_user_permissions(
     service = await wrapper_services.discover('drive', 'v3')
     await wrapper_services.as_service_account(
         service.permissions.create(
-            fileId=spreadsheetid,
+            fileId=spreadsheet_id,
             json=permissions_body,
             fields="id"
         ))
@@ -38,31 +90,24 @@ async def set_user_permissions(
 
 async def spreadsheets_update_value(
         spreadsheet_id: str,
-        charity_projects_full: list,
+        table_values: list[dict[str, str]],
         wrapper_services: Aiogoogle
-) -> None:
-    now_date_time = datetime.now().strftime(settings.FORMAT)
+) -> list[dict[str, str]]:
     service = await wrapper_services.discover('sheets', 'v4')
-    table_header = settings.TABLE_HEADER.copy()
-    table_header[0][1] = table_header[0][1].format(now_date_time)
-    table_values = [
-        *table_header,
-        *[[project['name'], project['duration'], project['description']]
-          for project in charity_projects_full],
-    ]
     update_body = {
         'majorDimension': 'ROWS',
         'values': table_values
     }
-    check_size_for_sheet(
-        len((max(table_values, key=len))),
-        len(table_values)
-    )
+    row_count = len(table_values)
+    column_count = len((max(table_values, key=len)))
+    if row_count > 500 or column_count > 18000:  # ограничения гугл-таблиц на количество строк и столбцов
+        raise OverflowError
     await wrapper_services.as_service_account(
         service.spreadsheets.values.update(
             spreadsheetId=spreadsheet_id,
-            range=settings.RANGE,
+            range=f'R1C1:R{row_count}C{column_count}',
             valueInputOption='USER_ENTERED',
             json=update_body
         )
     )
+    return table_values
