@@ -59,12 +59,12 @@ async def spreadsheets_create(
     spreadsheet_body = copy.deepcopy(SPREADSHEET_BODY)
     spreadsheet_body['properties']['title'] = (
         spreadsheet_body['properties']['title'].format(NOW_DATE_TIME))
-    spreadsheet_body.get('sheets')[0]['properties'].get(
-        'gridProperties'
-    )['rowCount'] = len(table_values)
-    spreadsheet_body.get('sheets')[0]['properties'].get(
-        'gridProperties'
-    )['columnCount'] = len((max(table_values, key=len)))
+    gridProperties = spreadsheet_body['sheets'][0]['properties']['gridProperties']
+    gridProperties['rowCount'] = len(table_values)
+    gridProperties['columnCount'] = len((max(table_values, key=len)))
+    if (gridProperties['rowCount'] > 500 or
+            gridProperties['columnCount'] > 18000):  # проверка ограничения гугл-таблиц на количество строк и столбцов
+        raise MemoryError("Таблица таблица переполненна данными")
     response = await wrapper_services.as_service_account(
         service.spreadsheets.create(json=spreadsheet_body)
     )
@@ -100,8 +100,6 @@ async def spreadsheets_update_value(
     }
     row_count = len(table_values)
     column_count = len((max(table_values, key=len)))
-    if row_count > 500 or column_count > 18000:  # ограничения гугл-таблиц на количество строк и столбцов
-        raise OverflowError
     await wrapper_services.as_service_account(
         service.spreadsheets.values.update(
             spreadsheetId=spreadsheet_id,

@@ -30,21 +30,17 @@ async def get_report(
         projects_by_completion_rate = (
             await charity_projects_crud.get_projects_by_completion_rate(session)
         )
-        table_values, response = create_table(projects_by_completion_rate)
+        table_for_sheet, table_for_response = create_table(projects_by_completion_rate)
         spreadsheet_id = await spreadsheets_create(
-            wrapper_services, table_values)
+            wrapper_services, table_for_sheet)
         await set_user_permissions(spreadsheet_id, wrapper_services)
         await spreadsheets_update_value(spreadsheet_id,
-                                        table_values,
+                                        table_for_sheet,
                                         wrapper_services)
-    except OverflowError:
+
+    except MemoryError as err:
         raise HTTPException(
-            status_code=500,
-            detail='Таблица таблица переполненна данными'
+            status_code=416,
+            detail=str(err)
         )
-    except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail='Проблемы на сервере, проверьте данные для google-api'
-        )
-    return response
+    return dict(table_for_response)
