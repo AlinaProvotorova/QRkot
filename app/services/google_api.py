@@ -62,8 +62,10 @@ async def spreadsheets_create(
     grid_properties = spreadsheet_body['sheets'][0]['properties']['gridProperties']
     grid_properties['rowCount'] = len(table_values)
     grid_properties['columnCount'] = len((max(table_values, key=len)))
-    if (grid_properties['rowCount'] > 500 or
-            grid_properties['columnCount'] > 18000):  # проверка ограничения гугл-таблиц на количество строк и столбцов
+    if (
+            grid_properties['rowCount'] > 500 or
+            grid_properties['columnCount'] > 18000
+    ):  # проверка ограничения гугл-таблиц на количество строк и столбцов
         raise ValueError("Данные занимают больше 500 строк или 18000 столбцов")
     response = await wrapper_services.as_service_account(
         service.spreadsheets.create(json=spreadsheet_body)
@@ -76,9 +78,11 @@ async def set_user_permissions(
         spreadsheet_id: str,
         wrapper_services: Aiogoogle
 ) -> None:
-    permissions_body = {'type': 'user',
-                        'role': 'writer',
-                        'emailAddress': settings.superuser_email}
+    permissions_body = {
+        'type': 'user',
+        'role': 'writer',
+        'emailAddress': settings.superuser_email
+    }
     service = await wrapper_services.discover('drive', 'v3')
     await wrapper_services.as_service_account(
         service.permissions.create(
