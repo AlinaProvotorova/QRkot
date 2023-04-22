@@ -59,12 +59,12 @@ async def spreadsheets_create(
     spreadsheet_body = copy.deepcopy(SPREADSHEET_BODY)
     spreadsheet_body['properties']['title'] = (
         spreadsheet_body['properties']['title'].format(NOW_DATE_TIME))
-    gridProperties = spreadsheet_body['sheets'][0]['properties']['gridProperties']
-    gridProperties['rowCount'] = len(table_values)
-    gridProperties['columnCount'] = len((max(table_values, key=len)))
-    if (gridProperties['rowCount'] > 500 or
-            gridProperties['columnCount'] > 18000):  # проверка ограничения гугл-таблиц на количество строк и столбцов
-        raise MemoryError("Таблица таблица переполненна данными")
+    grid_properties = spreadsheet_body['sheets'][0]['properties']['gridProperties']
+    grid_properties['rowCount'] = len(table_values)
+    grid_properties['columnCount'] = len((max(table_values, key=len)))
+    if (grid_properties['rowCount'] > 500 or
+            grid_properties['columnCount'] > 18000):  # проверка ограничения гугл-таблиц на количество строк и столбцов
+        raise ValueError("Данные занимают больше 500 строк или 18000 столбцов")
     response = await wrapper_services.as_service_account(
         service.spreadsheets.create(json=spreadsheet_body)
     )

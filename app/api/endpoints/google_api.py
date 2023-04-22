@@ -38,7 +38,7 @@ async def get_report(
                                         table_for_sheet,
                                         wrapper_services)
 
-    except MemoryError as err:
+    except ValueError as err:
         raise HTTPException(
             status_code=416,
             detail=str(err)
